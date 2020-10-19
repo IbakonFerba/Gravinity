@@ -92,6 +92,7 @@ namespace FK
             #region IGravitySource
             public Vector3 GetGravityAtPosition(Vector3 position)
             {
+                // TODO: cache as much as possible and bail out as fast as possible if this has no influence (use an OBB to determine whether the player is in reach, only do calculations if inside the OBB)
                 Vector3 localPosition = transform.InverseTransformPoint(position);
                 Vector3 halfDimensions = SurfaceDimensions * 0.5f;
 

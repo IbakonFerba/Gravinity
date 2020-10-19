@@ -159,7 +159,7 @@ namespace FK
             }
 
             /// <summary>
-            /// Sets the range, recalculating all values depending on it (This will call SetFalloffDistance with the current faloff distance to recalculate faloff values)
+            /// Sets the range, recalculating all values depending on it (This will also call SetFalloffDistance with the current faloff distance to recalculate faloff values)
             /// </summary>
             /// <param name="value">New range value</param>
             public void SetRange(float value)

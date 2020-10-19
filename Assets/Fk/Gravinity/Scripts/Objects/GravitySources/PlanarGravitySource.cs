@@ -12,10 +12,28 @@ namespace FK
         /// Written by Fabian Kober
         /// fabian-kober@gmx.net
         /// </summary>
-        public class PlanarGravitySource : MonoBehaviour, IGravitySource
+        public class PlanarGravitySource 
+            : MonoBehaviour
+            , IGravitySource
+            , IGravitySourceBasePropertiesChangeListener
         {
             // ######################## PROPERTIES ######################## //
+            #region PROPERTIES
             public GravitySourceBaseProperties Properties => _gravitySourceProperties;
+
+            /// <summary>
+            /// Extends of the plane. Setting this causes recalculations of the bounds of the gravity source
+            /// </summary>
+            public Vector2 Dimensions
+            {
+                get => _dimensions;
+                set
+                {
+                    _dimensions = value;
+                    RecalculateBounds();
+                }
+            }
+            #endregion
 
 
             // ######################## EXPOSED VARS ######################## //
@@ -23,14 +41,14 @@ namespace FK
             [SerializeField] private GravitySourceBaseProperties _gravitySourceProperties;
 
             [Header("Plane Properties")]
+            [SerializeField]
             [Tooltip("Extends of the plane")]
-            public Vector2 Dimensions = new Vector2(1.0f, 1.0f);
+            private Vector2 _dimensions = new Vector2(1.0f, 1.0f);
             #endregion
 
 
             // ######################## PRIVATE VARS ######################## //
-            #region PRIVATE VARS
-            #endregion
+            private OBB _bounds;
 
 
             // ######################## UNITY EVENT FUNCTIONS ######################## //
@@ -38,11 +56,15 @@ namespace FK
             private void Start()
             {
                 GravityManager.RegisterGravitySource(this);
+                _gravitySourceProperties.RegisterListener(this);
+
+                RecalculateBounds();
             }
 
             private void OnDestroy()
             {
                 GravityManager.UnregisterGravitySource(this);
+                _gravitySourceProperties.UnregisterListener(this);
             }
 
             private void OnDrawGizmos()
@@ -52,9 +74,9 @@ namespace FK
                 Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
 
                 Gizmos.color = Color.blue;
-                Gizmos.DrawWireCube(Vector3.up * (_gravitySourceProperties.FalloffStartRange * 0.5f), new Vector3(Dimensions.x, _gravitySourceProperties.FalloffStartRange, Dimensions.y));
+                Gizmos.DrawWireCube(Vector3.up * (_gravitySourceProperties.FalloffStartRange * 0.5f), new Vector3(_dimensions.x, _gravitySourceProperties.FalloffStartRange, _dimensions.y));
                 Gizmos.color = Color.cyan;
-                Gizmos.DrawWireCube(Vector3.up * (_gravitySourceProperties.Range * 0.5f), new Vector3(Dimensions.x, _gravitySourceProperties.Range, Dimensions.y));
+                Gizmos.DrawWireCube(Vector3.up * (_gravitySourceProperties.Range * 0.5f), new Vector3(_dimensions.x, _gravitySourceProperties.Range, _dimensions.y));
 
                 // reset the matrix
                 Gizmos.matrix = restoreMatrix;
@@ -63,12 +85,14 @@ namespace FK
 
 
             // ######################## FUNCTIONALITY ######################## //
+            #region FUNCTIONALITY
             #region IGravitySource
             public Vector3 GetGravityAtPosition(Vector3 position)
             {
-                float range = _gravitySourceProperties.Range;
-                OBB rangeBounds = new OBB(transform.position + transform.up * range * 0.5f, new Vector3(Dimensions.x, range, Dimensions.y), transform.rotation);
-                if (!rangeBounds.Contains(position))
+                if (transform.hasChanged)
+                    RecalculateBoundsTransform();
+
+                if (!_bounds.Contains(position))
                     return Vector3.zero;
 
                 Vector3 localPosition = transform.InverseTransformPoint(position);
@@ -91,6 +115,32 @@ namespace FK
             {
                 return _gravitySourceProperties.CapturePlayerExclusive;
             }
+            #endregion
+
+            #region IGravitySourceBasePropertiesChangeListener
+            public void OnRangeChanged(float newRange)
+            {
+                RecalculateBounds();
+            }
+
+            public void OnFalloffStartRangeChanged(float newFalloffStartRange)
+            {
+                // do nothing
+            }
+            #endregion
+
+            private void RecalculateBounds()
+            {
+                RecalculateBoundsTransform();
+                _bounds.SetSize(new Vector3(_dimensions.x, _gravitySourceProperties.Range, _dimensions.y));
+            }
+
+            private void RecalculateBoundsTransform()
+            {
+                _bounds.SetTransform(transform.position + transform.up * _gravitySourceProperties.Range * 0.5f, transform.rotation);
+                transform.hasChanged = false;
+            }
+
             #endregion
         }
     }
