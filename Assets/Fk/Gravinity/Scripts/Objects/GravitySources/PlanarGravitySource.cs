@@ -20,11 +20,16 @@ namespace FK
 
             // ######################## EXPOSED VARS ######################## //
             #region EXPOSED VARS
-            [SerializeField] private GravitySourceBaseProperties _gravitySourceProperties = new GravitySourceBaseProperties(false);
+            [SerializeField] private GravitySourceBaseProperties _gravitySourceProperties;
 
             [Header("Plane Properties")]
             [Tooltip("Extends of the plane")]
             public Vector2 Dimensions = new Vector2(1.0f, 1.0f);
+            #endregion
+
+
+            // ######################## PRIVATE VARS ######################## //
+            #region PRIVATE VARS
             #endregion
 
 

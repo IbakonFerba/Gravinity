@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using FK.Utility;
+using System.Collections.Generic;
 
 namespace FK
 {
@@ -34,10 +35,23 @@ namespace FK
         }
 
         /// <summary>
+        /// <para>Event listener Interface for GravitySourceBaseProperties</para>
+        ///
+        /// v1.0 10/2020
+        /// Written by Fabian Kober
+        /// fabian-kober@gmx.net
+        /// </summary>
+        public interface IGravitySourceBasePropertiesChangeListener
+        {
+            void OnRangeChanged(float newRange);
+            void OnFalloffStartRangeChanged(float newFalloffStartRange);
+        }
+
+        /// <summary>
         /// <para>Properties that are most likely shared by all gravity sources.</para>
         /// <para>These already include some utility values like squared ranges for faster distance comparisions that are calculated when the properties are deserialized or whenever SetRange or SetFalloffDistance are called</para>
         ///
-        /// v1.0 10/2020
+        /// v1.1 10/2020
         /// Written by Fabian Kober
         /// fabian-kober@gmx.net
         /// </summary>
@@ -47,18 +61,9 @@ namespace FK
             // ######################## PROPRETIES ######################## //
             #region PROPERTIES 
             /// <summary>
-            /// Depending on the actual implementation of the gravity source, this can have different effects. Its effect in the properties is that the falloff start range will equal Range-FalloffDistance if false and Range+FalloffDistance if true
-            /// </summary>
-            public bool Inverted => _inverted;
-
-            /// <summary>
             /// Total range of the influence of the gravity source
             /// </summary>
             public float Range { get; private set; }
-            /// <summary>
-            /// Square of Range for faster distance comparisions
-            /// </summary>
-            public float SqrRange { get; private set; }
 
             /// <summary>
             /// The falloff distance within the range of the gravity source. This is guaranteed to always be less than or equal Range
@@ -68,10 +73,6 @@ namespace FK
             /// The actuall range where falloff starts. This is determined by the range and the falloff distance
             /// </summary>
             public float FalloffStartRange { get; private set; }
-            /// <summary>
-            /// Square of FalloffStartRange for faster distance comparisions
-            /// </summary>
-            public float SqrfalloffStartRange { get; private set; }
             #endregion
 
             // ######################## EXPOSED VARS ######################## //
@@ -81,14 +82,6 @@ namespace FK
             /// </summary>
             [Tooltip("If true and the player is inside the influence of this source, all other sources will be ignored.")]
             public bool CapturePlayerExclusive;
-
-            [SerializeField]
-            [HideInInspector]
-            private bool _canBeInverted;
-
-            [Tooltip("Should the shape of the source be inverted?")]
-            [SerializeField]
-            private bool _inverted;
 
             /// <summary>
             /// Strenght of the gravitational pull
@@ -109,42 +102,27 @@ namespace FK
 
 
             // ######################## PRIVATE VARS ######################## //
-            private bool _initialized;
+            private HashSet<IGravitySourceBasePropertiesChangeListener> _eventListeners;
 
 
             // ######################## INITS ######################## //
             #region CONSTRUCTORS
             public GravitySourceBaseProperties()
             {
-                _canBeInverted = true;
                 CapturePlayerExclusive = false;
-                _inverted = false;
                 Strength = 9.81f;
                 _range = 10.0f;
                 _falloffDistance = 1.0f;
-                _initialized = false;
+                _eventListeners = new HashSet<IGravitySourceBasePropertiesChangeListener>();
             }
 
-            public GravitySourceBaseProperties(bool inCanBeInverted)
+            public GravitySourceBaseProperties(bool inCapturePlayerExclusive, bool inInverted, float inStrength, float inRange, float inFalloffDistance)
             {
-                _canBeInverted = inCanBeInverted;
-                CapturePlayerExclusive = false;
-                _inverted = false;
-                Strength = 9.81f;
-                _range = 10.0f;
-                _falloffDistance = 1.0f;
-                _initialized = false;
-            }
-
-            public GravitySourceBaseProperties(bool inCapturePlayerExclusive, bool inInverted, float inStrength, float inRange, float inFalloffDistance, bool inCanBeInverted)
-            {
-                _canBeInverted = inCanBeInverted;
                 CapturePlayerExclusive = inCapturePlayerExclusive;
-                _inverted = inInverted;
                 Strength = inStrength;
                 _range = inRange;
                 _falloffDistance = inFalloffDistance;
-                _initialized = false;
+                _eventListeners = new HashSet<IGravitySourceBasePropertiesChangeListener>();
             }
             #endregion
 
@@ -159,11 +137,26 @@ namespace FK
 
             public void OnAfterDeserialize()
             {
-                SetRange(_range, false);
-                SetFalloffDistance(_falloffDistance);
-                _initialized = true;
+                Range = _range;
+                SetFalloffDistance_Internal(_falloffDistance, false);
+
+                foreach (IGravitySourceBasePropertiesChangeListener listener in _eventListeners)
+                {
+                    listener.OnRangeChanged(Range);
+                    listener.OnFalloffStartRangeChanged(FalloffStartRange);
+                }
             }
             #endregion
+
+            public void RegisterListener(IGravitySourceBasePropertiesChangeListener listener)
+            {
+                _eventListeners.Add(listener);
+            }
+
+            public void UnregisterListener(IGravitySourceBasePropertiesChangeListener listener)
+            {
+                _eventListeners.Remove(listener);
+            }
 
             /// <summary>
             /// Sets the range, recalculating all values depending on it (This will call SetFalloffDistance with the current faloff distance to recalculate faloff values)
@@ -171,16 +164,17 @@ namespace FK
             /// <param name="value">New range value</param>
             public void SetRange(float value)
             {
-                SetRange(value, true);
-            }
-
-            private void SetRange(float value, bool recalculateFalloffRange)
-            {
+#if UNITY_EDITOR
+                _range = value;
+#endif
                 Range = value;
-                SqrRange = Range * Range;
+                SetFalloffDistance_Internal(FalloffDistance, false);
 
-                if (recalculateFalloffRange)
-                    SetFalloffDistance(FalloffDistance);
+                foreach (IGravitySourceBasePropertiesChangeListener listener in _eventListeners)
+                {
+                    listener.OnRangeChanged(Range);
+                    listener.OnFalloffStartRangeChanged(FalloffStartRange);
+                }
             }
 
             /// <summary>
@@ -189,9 +183,24 @@ namespace FK
             /// <param name="value"></param>
             public void SetFalloffDistance(float value)
             {
+                SetFalloffDistance_Internal(value, true);
+            }
+
+            private void SetFalloffDistance_Internal(float value, bool sendEvent)
+            {
                 FalloffDistance = value > Range ? Range : value;
-                FalloffStartRange = _inverted ? Range + FalloffDistance : Range - FalloffDistance;
-                SqrfalloffStartRange = FalloffStartRange * FalloffStartRange;
+#if UNITY_EDITOR
+                _falloffDistance = FalloffDistance;
+#endif
+                FalloffStartRange = Range - FalloffDistance;
+
+                if (!sendEvent)
+                    return;
+
+                foreach (IGravitySourceBasePropertiesChangeListener listener in _eventListeners)
+                {
+                    listener.OnFalloffStartRangeChanged(FalloffStartRange);
+                }
             }
             #endregion
         }

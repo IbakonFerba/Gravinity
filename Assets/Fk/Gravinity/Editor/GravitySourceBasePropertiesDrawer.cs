@@ -21,16 +21,16 @@ namespace FK
                 #region UNITY EVENT FUNCTIONS
                 public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
                 {
-                    bool canBeInverted = property.FindPropertyRelative("_canBeInverted").boolValue;
+                    //bool canBeInverted = property.FindPropertyRelative("_canBeInverted").boolValue;
 
                     SerializedProperty currentProperty = property.Copy();
                     Rect currentPosition = position;
                     while(currentProperty.NextVisible(true) && !SerializedProperty.EqualContents(property.GetEndProperty(), currentProperty))
                     {
-                        if(currentProperty.name == "_inverted" && !canBeInverted)
-                        {
-                            continue;
-                        }
+                        //if(currentProperty.name == "_inverted" && !canBeInverted)
+                        //{
+                        //    continue;
+                        //}
                         currentPosition.height = EditorGUI.GetPropertyHeight(currentProperty);
                         EditorGUI.PropertyField(currentPosition, currentProperty);
                         currentPosition.y += EditorGUI.GetPropertyHeight(currentProperty);
@@ -43,16 +43,16 @@ namespace FK
                 #region FUNCTIONALITY
                 public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
                 {
-                    bool canBeInverted = property.FindPropertyRelative("_canBeInverted").boolValue;
+                    //bool canBeInverted = property.FindPropertyRelative("_canBeInverted").boolValue;
 
                     float height = 0.0f;
                     SerializedProperty currentProperty = property.Copy();
                     while (currentProperty.NextVisible(true) && !SerializedProperty.EqualContents(property.GetEndProperty(), currentProperty))
                     {
-                        if (currentProperty.name == "_inverted" && !canBeInverted)
-                        {
-                            continue;
-                        }
+                        //if (currentProperty.name == "_inverted" && !canBeInverted)
+                        //{
+                        //    continue;
+                        //}
 
                         height += EditorGUI.GetPropertyHeight(currentProperty, label, false);
                     } 
