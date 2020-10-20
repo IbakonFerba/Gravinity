@@ -49,7 +49,7 @@ namespace FK
             [Tooltip("If true, the source is an inverted sphere which has a gravitational pull away from its center")]
             public bool _inverted = false;
             [SerializeField]
-            [Tooltip("Radius of the surface of the inverted sphere. Beyond this, the source has no influence")]
+            [Tooltip("Radius of the surface of the inverted sphere. Beyond this, the source has no influence.\nIndicated by the yellow Gizmo")]
             private float _invertedSphereSurfaceRadius = 1.0f;
             #endregion
 
@@ -138,8 +138,7 @@ namespace FK
 
                 float distToEndRange = Mathf.Abs(_rangeRadius - toCenter.magnitude);
                 float normalizeddistToEndRange = distToEndRange / _gravitySourceProperties.FalloffDistance;
-                float interpolatedStrength = Mathf.Lerp(0.0f, _gravitySourceProperties.Strength, normalizeddistToEndRange);
-                return gravity * interpolatedStrength;
+                return gravity * (_gravitySourceProperties.Strength * normalizeddistToEndRange);
             }
 
             public bool ShouldBeExclusive()

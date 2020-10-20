@@ -12,7 +12,7 @@ namespace FK
         /// Written by Fabian Kober
         /// fabian-kober@gmx.net
         /// </summary>
-        public class PlanarGravitySource 
+        public class PlanarGravitySource
             : MonoBehaviour
             , IGravitySource
             , IGravitySourceBasePropertiesChangeListener
